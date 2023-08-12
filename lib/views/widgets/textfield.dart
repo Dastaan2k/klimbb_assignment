@@ -9,16 +9,20 @@ class KTextField extends StatelessWidget {
   final bool isReadOnly;
   final bool isEnabled;
   final TextEditingController? controller;
+  final String? Function(String?)? validator;
+  final Function(String)? onChanged;
 
-  const KTextField({Key? key, this.controller, this.hint, this.label = '', this.textInputType = TextInputType.text, this.isReadOnly = false, this.isEnabled = true}) : super(key: key);
+  const KTextField({Key? key, this.controller, this.hint, this.label = '', this.textInputType = TextInputType.text, this.isReadOnly = false, this.isEnabled = true, this.validator, this.onChanged}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
 
-    return TextField(
+    return TextFormField(
       controller: controller,
         keyboardType: textInputType,
         readOnly: isReadOnly,
+        onChanged: onChanged,
+        validator: validator,
         decoration: InputDecoration(
           filled: true,
           hintText: hint ?? label,

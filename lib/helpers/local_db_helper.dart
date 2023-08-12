@@ -24,29 +24,44 @@ class LocalDBHelper {
     }
   }
 
-  static Future<DBResponse<DeviceProfile>> getUser(double lat, double long) async {
+  static Future<DBResponse<DeviceProfile>> getProfile(int id) async {
     try {
-      var users = (await isar.deviceProfiles.filter().latitudeEqualTo(lat).longitudeEqualTo(long).findAll());
-      if(users.isNotEmpty) {
-        return DBResponse(data: users.first);
+      var profile = (await isar.deviceProfiles.get(id));
+      if(profile != null) {
+        return DBResponse(data: profile);
+      }
+      else {
+        return DBResponse(error: true, status: 404, reasonPhrase: 'Profile not found');
+      }
+    }
+    catch(e) {
+      return DBResponse(error: true, status: 500, reasonPhrase: 'Unknown error occurred while fetching profile : $e');
+    }
+  }
+
+  static Future<DBResponse<DeviceProfile>> getProfileFromLatLng(double lat, double long) async {
+    try {
+      var profiles = (await isar.deviceProfiles.filter().latitudeEqualTo(lat).longitudeEqualTo(long).findAll());
+      if(profiles.isNotEmpty) {
+        return DBResponse(data: profiles.first);
       }
       else {
         return DBResponse(error: true, status: 404, reasonPhrase: 'Profile not found');
       }
     } catch(e) {
-      return DBResponse(error: true, status: 500, reasonPhrase: 'Unknown error occurred while fetching profile');
+      return DBResponse(error: true, status: 500, reasonPhrase: 'Unknown error occurred while fetching profile : $e');
     }
   }
 
 
-  static Future<DBResponse<DeviceProfile>> postUser(DeviceProfile profile) async {
+  static Future<DBResponse<DeviceProfile>> postProfile(DeviceProfile profile) async {
     try {
       if(await _prePostValidation(profile) == true) {
         await isar.writeTxn(() => isar.deviceProfiles.put(profile));
-        return await getUser(profile.latitude, profile.longitude);
+        return await getProfileFromLatLng(profile.latitude, profile.longitude);
       }
       else {
-        return DBResponse(error: true, status: 409, reasonPhrase: 'Similar profile already present');
+        return DBResponse(error: true, status: 409, reasonPhrase: 'Profile with identical settings already present');
       }
     }
     catch(e) {
@@ -55,17 +70,17 @@ class LocalDBHelper {
   }
 
 
-  static Future<DBResponse<DeviceProfile>> updateUser(DeviceProfile profile, {FlexScheme? theme, double? fontMultiplier}) async {
+  static Future<DBResponse<DeviceProfile>> updateProfile(DeviceProfile profile, {FlexScheme? theme, double? fontMultiplier}) async {
     try {
       if(await _prePostValidation(profile) == true) {
-        var getResp = await getUser(profile.latitude, profile.longitude);
+        var getResp = await getProfile(profile.id);
         if(getResp.error) {
           return getResp;
         }
         else {
           getResp.data!..theme = (theme ?? profile.theme)..fontSizeMultiplier = (fontMultiplier ?? profile.fontSizeMultiplier);
           await isar.writeTxn(() async =>  await isar.deviceProfiles.put(getResp.data!));
-          return await getUser(profile.latitude, profile.longitude);
+          return await getProfile(profile.id);
         }
       }
       else {
@@ -78,9 +93,8 @@ class LocalDBHelper {
   }
 
 
-
   static Future<bool> _prePostValidation(DeviceProfile profile) async {
-    var profiles = (await isar.deviceProfiles.filter().latitudeEqualTo(profile.latitude).longitudeEqualTo(profile.longitude).themeEqualTo(profile.theme).fontSizeMultiplierEqualTo(profile.fontSizeMultiplier).findAll());
+    var profiles = (await isar.deviceProfiles.filter().themeEqualTo(profile.theme).fontSizeMultiplierEqualTo(profile.fontSizeMultiplier).findAll());
     return profiles.isEmpty;
   }
 
